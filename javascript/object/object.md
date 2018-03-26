@@ -123,3 +123,100 @@ ES5还为数组加入了几个迭代帮助方法，包括forEach(..)，every(..)
 forEach(..)将会迭代数组中所有的值，并且忽略回调的返回值。every(..)会一直迭代到最后，或者 当回调返回一个false（或“falsy”）值，而some(..)会一直迭代到最后，或者 当回调返回一个true（或“truthy”）值。
 
 你也可以使用ES6的for..of语法，在数据结构（数组，对象等）中迭代 值，它寻找一个内建或自定义的@@iterator对象，这个对象由一个next()方法组成，通过这个next()方法每次迭代一个数据。
+
+
+## 3.原型
+
+当我们调用对象上的属性时，对于默认的[[Get]]操作来说，第一步就是检查对象本身是否拥有这个属性，如果有，就使用它。如果没有就沿着对象的原型链向上查找，直到找到匹配名称的属性，如果在链条的末尾都没有找到匹配的属性，那么[[Get]]操作的返回结果为undefined。
+
+    var anotherObject = {
+      a: 2
+    }
+    // 创建一个链接到`anotherObject`的对象
+    var myObject = Object.create(anotherObject)
+    myObject.a // 2
+
+在这个例子中，我们现在让myObject[[Prototype]]链到了anotherObject。虽然很明显myObject.a实际上不存在，但是无论如何属性访问成功了（在anotherObject中找到了），而且确实找到了值2。但是，如果在anotherObject上也没有找到a，而且如果它的[[Prototype]]链不为空，就沿着它继续查找。
+
+### 设置与遮蔽属性
+
+当我们在对象上添加新属性，或者改变即存属性的值时，会有以下几种情况
+
+例如：
+
+    myObject.foo = "bar";
+
+1、如果对象myObject已经存在名为foo的数据访问器属性，那么这个赋值就和改变既存属性的值一样简单。
+
+2、foo还没有直接存在于myObject，[[Prototype]]就会被遍历，就像[[Get]]操作那样。如果在链条的任何地方都没有找到foo，那么就会像我们期望的那样，属性foo就以指定的值被直接添加到myObject上。
+
+3、如果foo同时存在于myObject和从myObject开始的[[Prototype]]链的更高层，这样的情况称为 遮蔽。直接存在于myObject上的foo属性会 遮蔽任何出现在链条高层的foo属性，因为myObject.foo查询总是在寻找链条最底层的foo属性。
+
+4、当foo不直接存在于myObject，但存在于myObject的[[Prototype]]链的更高层
+(1)如果一个普通的名为foo的数据访问属性在[[Prototype]]链的高层某处被找到，而且没有被标记为只读（writable:false），那么一个名为foo的新属性就直接添加到myObject上，形成一个遮蔽属性。
+(2)如果一个foo在[[Prototype]]链的高层某处被找到，但是它被标记为只读（writable:false） ，那么设置既存属性和在myObject上创建遮蔽属性都是不允许的。如果代码运行在strict mode下，一个错误会被抛出。否则，这个设置属性值的操作会被无声地忽略。不论怎样，没有发生遮蔽。
+(3)如果一个foo在[[Prototype]]链的高层某处被找到，而且它是一个setter（见第三章），那么这个setter总是被调用。没有foo会被添加到（也就是遮蔽在）myObject上，这个foo setter也不会被重定义。
+
+与其说js是面向对象，倒不如说是面向委托的设计。它并不像传统面向对象语言那样，通过拷贝类来生成实例，进而得到类上面定义的属性和方法。而是通过原型链来委托对象的属性，当一个属性/方法引用在第一个对象上发生，而这样的属性/方法又不存在时，引擎就会往原型链上继续查找。
+
+与其他面向对象语言类似的是，js也使用new关键字来生成一个实例，尽管它并不是拷贝对象的属性，而是通过在两个对象之间建立链接。
+
+例如：
+
+    var foo = {
+	  something: function() {
+	    console.log( "Tell me something good..." );
+	  }
+    }
+
+    var bar = Object.create(foo);
+
+    bar.something(); // Tell me something good...
+
+上面的例子通过 var bar = Object.create(foo) 来将bar和foo链接起来，所以即使bar对象上没有something这个方法，也可以通过查找[[Prototype]]链找到foo.something。
+
+相比于直接用new来链接两个对象，使用Object.create方法能使链接更加纯粹，副作用更少，而Object.create方法的本质，也是通过new来建立链接
+    if (!Object.create) {
+        Object.create = function(o) {
+            function F(){}
+            F.prototype = o;
+            return new F();
+        };
+    }
+
+
+### 原型继承
+
+这里是一段典型的创建这样的链接的“原型风格”代码：
+
+    function Foo(name) {
+	this.name = name;
+    }
+
+    Foo.prototype.myName = function() {
+        return this.name;
+    };
+
+    function Bar(name,label) {
+        Foo.call( this, name );
+        this.label = label;
+    }
+
+    // 这里，我们创建一个新的`Bar.prototype`链接链到`Foo.prototype`
+    Bar.prototype = Object.create( Foo.prototype );
+
+    // 注意！现在`Bar.prototype.constructor`不存在了，
+    // 如果你有依赖这个属性的习惯的话，可以被手动“修复”。
+
+    Bar.prototype.myLabel = function() {
+        return this.label;
+    };
+
+    var a = new Bar( "a", "obj a" );
+
+    a.myName(); // "a"
+    a.myLabel(); // "obj a"
+
+通过new Bar 使得a与Bar.prototype建立链接, 通过Object.create( Foo.prototype ) 使
+得Bar.prototype与Foo.prototype建立链接
+
