@@ -91,3 +91,96 @@ foo( null, 6 );			// 6  <-- null强制转换为`0`
     console.log( a, b, c );				// 1 2 3
     console.log( x, y, z );
 
+#### 对象字面量扩展
+
+    var x = 2, y = 3,
+    o = {
+      x,
+      y
+    };
+
+    var o = {
+      x() {
+        // ..
+      },
+      y() {
+        // ..
+      }
+    }
+
+#### 设置[[Prototype]]
+
+有时候在你声明对象字面量的同时给它的[[Prototype]]赋值很有用。下面的代码在一段时期内曾经是许多JS引擎的一种非标准扩展，但是在ES6中得到了标准化：
+
+    var o1 = {
+      // ..
+    };
+
+    var o2 = {
+      __proto__: o1,
+      // ..
+    };
+
+对于给一个既存的对象设置[[Prototype]]，你可以使用ES6的工具Object.setPrototypeOf(..)。考虑如下代码：
+
+    var o1 = {
+      // ..
+    };
+
+    var o2 = {
+      // ..
+    };
+
+    Object.setPrototypeOf( o2, o1 );
+
+#### 对象super
+
+    var o1 = {
+      foo() {
+        console.log( "o1:foo" );
+      }
+    };
+
+    var o2 = {
+      foo() {
+        super.foo();
+        console.log( "o2:foo" );
+      }
+    };
+
+    Object.setPrototypeOf( o2, o1 );
+
+    o2.foo();		// o1:foo
+                // o2:foo
+
+警告： super仅在简约方法中允许使用，而不允许在普通的函数表达式属性中。而且它还仅允许使用super.XXX形式（属性/方法访问），而不是super()形式。
+
+
+#### 模板字面量
+
+    var name = "Kyle";
+
+    var greeting = `Hello ${name}!`;
+
+    console.log( greeting );			// "Hello Kyle!"
+    console.log( typeof greeting );		// "string"
+
+#### 箭头函数
+
+#### for..of循环
+
+    for (var val of a) {
+      console.log( val );
+    }
+    // "a" "b" "c" "d" "e"
+
+在JavaScript标准的内建值中，默认为可迭代对象的（或提供可迭代能力的）有：
+
+数组
+字符串
+Generators（见第三章）
+集合/类型化数组（见第五章）
+
+#### Unicode
+
+#### Symbols
