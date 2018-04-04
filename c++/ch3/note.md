@@ -134,3 +134,148 @@
 
 不能用下标形式添加元素(string对象也是),但是可以通过下标修改已拥有的元素
 
+### 3.4 迭代器介绍
+
+#### 3.4.1 使用迭代器
+
+### 3.5 数组
+
+#### 3.5.1 定义和初始化数组
+
+1、维度必须是一个常量表达式
+
+    string strs[get_size()]; // 当get_size()是常量表达式时正确
+    int arr[10];
+    unsigned cnt = 42;
+    string bad[cnt]; // 错误
+
+    constexpr unsigned sz = 42;
+    int *parr[sz]; // 正确
+
+2、显示初始化
+
+    const unsigned sz = 3;
+    int ial[sz] = {0, 1, 2}
+    int a2[] = {0, 1, 2}
+    string a4[3] = {"hi", "bey"}  // "hi" "bey" ""
+
+    char a[] = "C++" // 维度4
+
+3、不允许拷贝和赋值
+
+    int a[] = {0, 1, 2};
+    int a2[] = a;  // 错误
+    a2 = a; // 错误
+
+4、数组声明
+
+    int *ptrs[10]; // 含有10个整数型指针的数组
+    int &refs[10] =  // 错误，不存在引用的数组
+    int (*parray)[10] = &arr // 指向含有10个整数的数组的指针
+    int (&arrRef)[10] = arr // 引用一个含有10个整数的数组
+
+#### 3.5.2 访问数组元素
+
+    cstddef头文件中定义了size_t类型
+
+#### 3.5.3 指针和数组
+
+1、在很多用到数组名字的地方，编译器都会自动的将其替换为一个指向数组首元素的指针
+
+    string *p = nums; // 等价于 string p = &nums[0]
+
+2、指针也是迭代器，迭代器支持的运算，数组指针也支持
+
+    int *p = arr; // p指向arr的第一个元素
+    ++p;  // p指向arr[1]
+
+3、标准库函数begin和end
+
+    int a[] = {...}
+    int *beg = begin(a);
+    int *last = end(a)
+
+4、指针相减，ptrdiff_t带符号类型
+
+5、解引用和指针运算的交互
+
+    int a[] = {0, 2, 4, 6, 8}
+    int last = *(a + 4) // 8
+
+    last = *a + 4 // 4
+
+6、下标和指针
+
+    int ia[] = {0, 2, 4, 6, 8};
+    int i = ia[2]; // (ia + 2)
+    int *p = ia;
+    i = *(p + 2); // 等价于i = ia[2]
+
+ #### 3.5. c风格字符串
+
+1、c标准库函数
+
+2、c++ c风格字符串比较
+    string s1 = "...";
+    string s2 = "...";
+    if (s1 > s2) ..  // 正确比较
+    const char ca1[] = "...";
+    const char ca2[] = "...";
+    if (ca1 > ca2) // 错误,实际比较的是const char*的值，并非指向同一对象
+    if (stccmp(ca1, ca2)) // 使用标准库函数进行比较
+
+3、混用string对象和c风格字符串
+
+    char *str = s; // 错误，
+    const char *str = s.c_str();
+
+4、使用数组初始化vector对象
+
+    int int_arr[] = {0, 1, 3, 4, 5};
+    vector<int> ivect(begin(int_arr), end(int_arr));
+
+### 3.6多维数组
+
+1、多维数组初始化
+
+    int ia[3][4] = {
+      {0, 1, 2, 3},
+      {4, 5, 6, 7},
+      {8, 9, 10, 11}
+    }
+
+    int ia[3][4] = {0, 1, 2, 3, ....}
+
+初始化每行首元素
+
+    int ia[3][4] = {{0}, {4}, {8}
+
+2、 多维数组的下标引用
+
+    ia[2][3] = arr[0][0][0];
+    int (&row)[4] = ia[1]
+
+    constexpr size_t rowCnt = 3, colCnt = 4;
+    int ia[rowCnt][colCnt];
+    for (size_t i = 0; i != rowCnt; ++i)
+        for (size_t j = 0; j != colCntl; ++j)
+            ia[i][j] = colCnt * i + j
+
+3、使用范围for
+
+    size_t cnt = 0;
+    for (auto &row : ia) // 将row声明为引用类型，避免row被自动转为指针
+      for (auto &col : row)
+        col = cnt;
+        ++cnt;
+
+4、指针和多维数组
+
+    int ia[3][4];
+    int (*p)[4] = ia;
+
+5、类型别名简化多维数组的指针
+
+    using int_array = int[4]; // typedef int int_array[4];
+
+    for (int_array *p = ia; .....)
