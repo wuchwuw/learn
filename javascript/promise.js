@@ -1,46 +1,82 @@
-function Promise(fn) {
-  var value = null,
-      cbs = [],
-      state = 'pending'
-  this.then = function (onFulFilled) {
-    if (state === 'pending') {
-      cbs.push(onFulFilled)
-      return this
-    }
-    onFulfilled(value)
-    return this
-  }
-  function resolve(value) {
-    setTimeout(() => {
-      cbs.forEach((cb) => {
-        cb(value)
-      })
-    }, 0)
-  }
-  fn(resolve)
-}
+// function Promise(fn) {
+//   var value = null,
+//       cbs = [],
+//       state = 'pending'
+//   this.then = function (onFulFilled) {
+//     if (state === 'pending') {
+//       cbs.push(onFulFilled)
+//       return this
+//     }
+//     onFulfilled(value)
+//     return this
+//   }
+//   function resolve(value) {
+//     setTimeout(() => {
+//       cbs.forEach((cb) => {
+//         cb(value)
+//       })
+//     }, 0)
+//   }
+//   fn(resolve)
+// }
 
-function a() {
-  return new Promise(function(resolve) {
-    // setTimeout(() => {
-    //   var b = 'resolve'
-    //   resolve(b)
-    // }, 1000)
-    var b = 'resolve'
-    resolve(b)
+// function a() {
+//   return new Promise(function(resolve) {
+//     // setTimeout(() => {
+//     //   var b = 'resolve'
+//     //   resolve(b)
+//     // }, 1000)
+//     var b = 'resolve'
+//     resolve(b)
+//   })
+// }
+
+// a()
+//   .then((c) => {
+//     return c
+//   })
+//   .then((c) => {
+//     return new Promise((resolve) => {
+//       var b = '...'
+//       resove(b)
+//     })
+//   })
+//   .then(b => {
+//     ...
+//   })
+
+function a () {
+  return new Promise ((resolve, reject) => {
+    let a = true
+    if (a) {
+      reject(a)
+    }
   })
 }
 
 a()
-  .then((c) => {
-    return c
-  })
-  .then((c) => {
-    return new Promise((resolve) => {
-      var b = '...'
-      resove(b)
+  .then(() => {
+    console.log('resolve')
+  }, () => {
+    return new Promise ((resolve, reject) => {
+      let a = true
+      if (a) {
+        reject(a)
+      }
     })
   })
-  .then(b => {
-    ...
+  .then(() => {
+    console.log('resolve1')
+  }, () => {
+    console.log('reject1')
+  })
+  .then(() => {
+    console.log('resolve2')
+  }, () => {
+    console.log('reject3')
+  })
+  .then(() => {
+    console.log('resolve2')
+  }, () => {
+    console.log('reject3')
   })
