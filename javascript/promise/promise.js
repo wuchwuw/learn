@@ -1,16 +1,28 @@
 function Promise(executor) {
+
+  if (!(this instanceof Promise)) {
+    return new Promise(executor)
+  }
+  if (typeof executor !== 'function') {
+    throw new TypeError('Promise executor is not a function')
+  }
+
   let _this = this
   _this.status = 'pending'
   _this.value = null
   _this.reason = null
-  _this.onFulfilledCallbacks = []
+  _this.onResolvedCallbacks = []
   _this.onRejectedCallbacks = []
 
   function resolve(value) {
+    resolvePromise(_this, value, fulfill, reject)
+  }
+
+  function fulfill(value) {
     if (_this.status === 'pending') {
-      _this.status = 'fulfilled'
+      _this.status = 'resolved'
       _this.value = value
-      _this.onFulfilledCallbacks.forEach((fn) => {
+      _this.onResolvedCallbacks.forEach((fn) => {
         fn()
       })
     }
@@ -26,20 +38,60 @@ function Promise(executor) {
     }
   }
 
-  if (!(this instanceof Promise)) {
-    return new Promise(executor)
-  }
-  if (typeof executor !== 'function') {
-    throw new TypeError('Promise executor is not a function')
-  }
   try {
+    let called = false
     executor(function (value) {
+      if(called) return
+      called = true
       resolve(value)
     }, function (reason) {
+      if(called) return
+      called = true
       reject(reason)
     })
   } catch (e) {
     reject(e)
+  }
+}
+
+function resolvePromise (promise, x, fulfill, reject) {
+  if (promise === x) {
+    return reject(new TypeError('循环引用了'))
+  }
+  if (x instanceof Promise) {
+    if (x.status === 'pending') {
+      x.then(function(y) {
+        resolvePromise(promise, y, fulfill, reject)
+      }, reject)
+    } else {
+      x.then(fulfill, reject)
+    }
+    return
+  }
+  let called = false
+  if (x !== null && (typeof x === 'object') || typeof x === 'function') {
+    try {
+      let then = x.then
+      if (typeof then === 'function') {
+        then.call(x, (y) => {
+          if (called) return
+          called = true
+          resolvePromise(promise, y, fulfill, reject)
+        }, (err) => {
+          if (called) return
+          called = true
+          reject(err)
+        })
+      } else {
+        fulfill(x)
+      }
+    } catch (e) {
+      if (called) return
+      called = true
+      reject(err)
+    }
+  } else {
+    fulfill(x)
   }
 }
 
@@ -58,29 +110,9 @@ Promise.prototype.then = function (onFulfilled, onRejected) {
       throw reason // 待测试return 和 throw区别
     }
   }
-  if (_this.status === 'fulfilled') {
+  if (_this.status === 'resolved') {  // 将回调函数放入微任务队列
     newPromise = new Promise(function (resolve, reject) {
-      try {
-        let x = onFulfilled(_this.value)
-        resolve(x)
-      } catch (e) {
-        reject(e)
-      }
-    })
-  }
-  if (_this.status === 'rejected') {
-    newPromise = new Promise(function (resolve, reject) {
-      try {
-        let x = onRejected(_this.reason)
-        resolve(x)
-      } catch (e) {
-        reject(e)
-      }
-    })
-  }
-  if (_this.status === 'pending') {
-    newPromise = new Promise(function (resolve, reject) {
-      _this.onFulfilledCallbacks.push(function () {
+      process.nextTick(() => {
         try {
           let x = onFulfilled(_this.value)
           resolve(x)
@@ -88,7 +120,12 @@ Promise.prototype.then = function (onFulfilled, onRejected) {
           reject(e)
         }
       })
-      _this.onRejectedCallbacks.push(function () {
+    })
+  }
+  if (_this.status === 'rejected') {
+       // 将回调函数放入微任务队列
+    newPromise = new Promise(function (resolve, reject) {
+      process.nextTick(() => {
         try {
           let x = onRejected(_this.reason)
           resolve(x)
@@ -98,34 +135,96 @@ Promise.prototype.then = function (onFulfilled, onRejected) {
       })
     })
   }
+  if (_this.status === 'pending') {
+       // 将回调函数放入微任务队列
+      newPromise = new Promise(function (resolve, reject) {
+        _this.onResolvedCallbacks.push(function () {
+          process.nextTick(() => {
+            try {
+              let x = onFulfilled(_this.value)
+              resolve(x)
+            } catch (e) {
+              reject(e)
+            }
+          })
+        })
+        _this.onRejectedCallbacks.push(function () {
+          process.nextTick(() => {
+            try {
+              let x = onRejected(_this.reason)
+              resolve(x)
+            } catch (e) {
+              reject(e)
+            }
+          })
+        })
+      })
+  }
   return newPromise
 }
 
-// test
-// var promise = new Promise((resolve, reject) => {
-//   setTimeout(function () {
-//     resolve('test simplePromise resolve')
-//   }, 1000)
-// })
-// promise.then(function (value) {
-//   console.log('success:', value)
-//   return value
-// }, function (reason) {
-//   console.log('failed:', reason)
-// })
-// .then(function (value) {
-//   console.log('then2', value)
-// })
-// let promise1 = new Promise((resolve,reject) => {
-//   throw new Error('error')
-// })
-// promise1.then((value)=>{
-//   console.log('success:',value)
-// },(reason)=>{
-//   console.log('reject:',reason)
-// })
-new Promise((resolve,reject)=>{
-  resolve(1)
-}).then().then().then((value)=>{
-  console.log(value)
-},(reason)=>{console.log('reject:', reason)})
+Promise.resolve = function (value) { //返回一个promise
+  return new Promise(function(resolve,reject){
+      resolve(value);
+  })
+}
+
+Promise.reject = function (value) {
+  return new Promise((resolve, reject) => {
+    reject(value)
+  })
+}
+
+Promise.prototype.catch = function (callback) {
+  return this.then(null, callback)
+}
+
+Promise.race = function (promiseArr) {
+  return new Promise((resolve, reject) => {
+    for (let i = 0; i < promiseArr.length; i++) {
+      promiseArr[i].then(resolve, reject)
+    }
+  })
+}
+
+Promise.all = function (promiseArr) {
+  return new Promise((resolve, reject) => {
+    let result = []
+        time = 0;
+    function promiseArr(y, i) {
+      result[i] = y
+      if (++time === promiseArr.length) {
+        resolve(result)
+      }
+    }
+    for (let i = 0; i < promiseArr.length; i++) {
+      promiseArr[i].then(((y) => {
+        processData(y, i)
+      }), reject)
+    }
+  })
+}
+
+Promise.resolve(1).then(2).then(Promise.resolve(3)).then(console.log)
+Promise.resolve(new Error('error')).then((value)=>{
+  console.log('then:', value)
+}).catch((error)=>{
+  console.log('catch:', error)
+})
+
+new Promise((resolve, reject) => {
+  resolve({
+    then:(onFulfilled,onRejected)=>{
+      onFulfilled(new Promise((resolve1)=>{
+        setTimeout(()=>{
+          resolve1(456)
+        },1000)
+      }))
+      onRejected(789)
+    }
+  })
+}).then((value) => {
+  console.log('fulfilled:', value)
+}, (reason) => {
+  console.log('rejected:', reason)
+})
